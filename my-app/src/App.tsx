@@ -1,12 +1,15 @@
 import { Suspense, useEffect } from 'react'
 import './App.css'
 
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { Layout } from './components/Layout'
+import { ProtectedRoute } from './components/ProtectedRoute'
+import { LoginPage } from './features/auth/LoginPage'
+import { AuthProvider, useAuth } from './features/auth/useAuth'
 import { useHashLocation } from './hooks/useHashLocation'
-import { ShellLayout } from './layouts/ShellLayout'
-import { isPathMatch } from './router/match'
 import { allRoutes, defaults, navForArea } from './modules/routes'
-import { AuthProvider, useAuth } from './modules/auth/useAuth'
-import { LoginPage } from './modules/site/pages/LoginPage'
+import { isPathMatch } from './router/match'
+import { useAppStore } from './store/appStore'
 
 function AppInner() {
   const { path, navigate } = useHashLocation()
@@ -18,7 +21,7 @@ function AppInner() {
   const nav = navForArea(area)
 
   const requiresAuth = route?.requiresAuth ?? false
-  const shouldGate = requiresAuth && !auth.user
+  const shouldGate = requiresAuth && !auth.session
 
   useEffect(() => {
     if (shouldGate && path !== defaults.login) navigate(defaults.login)
@@ -33,32 +36,32 @@ function AppInner() {
 
   if (path === defaults.login) {
     return (
-      <ShellLayout title="HotelMonolith" areaBadge="AUTH" nav={[]} activePath={path} onNavigate={navigate}>
+      <Layout title="Access Control" areaBadge="AUTH" nav={[]} activePath={path} onNavigate={navigate} user={auth.session}>
         <LoginPage
-          onDone={(user) => {
-            const next = user.roles.includes('Admin') ? defaults.admin : defaults.site
+          onDone={(session) => {
+            const next = session.roles.includes('Admin') ? defaults.admin : defaults.site
             navigate(next)
           }}
         />
-      </ShellLayout>
+      </Layout>
     )
   }
 
   if (shouldGate) return null
-
   if (!route) return null
 
   const Page = route.element
 
   return (
-    <ShellLayout
-      title="HotelMonolith"
+    <Layout
+      title={area === 'admin' ? 'Dashboard' : 'Guest Booking'}
       areaBadge={area === 'admin' ? 'ADMIN' : 'SITE'}
       nav={nav}
       activePath={path}
       onNavigate={navigate}
+      user={auth.session}
       onLogout={
-        auth.user
+        auth.session
           ? () => {
               auth.logout()
               navigate(defaults.site)
@@ -66,21 +69,41 @@ function AppInner() {
           : undefined
       }
     >
-      <Suspense fallback={<div className="page">Loading...</div>}>
-        <Page />
-      </Suspense>
-    </ShellLayout>
+      <ErrorBoundary>
+        <ProtectedRoute
+          allowed={!requiresAuth || Boolean(auth.session)}
+          fallback={
+            <section className="stateCard">
+              <div className="stateCard__eyebrow">Auth guard</div>
+              <h2 className="stateCard__title">This route requires a signed session.</h2>
+            </section>
+          }
+        >
+          <Suspense fallback={<div className="glassCard">Loading workspace...</div>}>
+            <Page />
+          </Suspense>
+        </ProtectedRoute>
+      </ErrorBoundary>
+    </Layout>
+  )
+}
+
+function AppRoot() {
+  const theme = useAppStore((state) => state.theme)
+
+  return (
+    <div className="app" data-theme={theme}>
+      <div className="appShell">
+        <AppInner />
+      </div>
+    </div>
   )
 }
 
 export default function App() {
   return (
     <AuthProvider>
-      <div className="app">
-        <div className="appShell">
-          <AppInner />
-        </div>
-      </div>
+      <AppRoot />
     </AuthProvider>
   )
 }
