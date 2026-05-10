@@ -3,6 +3,7 @@ import React from 'react';
 import { Icon } from '@chakra-ui/react';
 import {
   MdBarChart,
+  MdBusiness,
   MdPerson,
   MdHome,
   MdLock,
@@ -14,6 +15,7 @@ import MainDashboard from 'views/admin/default';
 import NFTMarketplace from 'views/admin/marketplace';
 import Profile from 'views/admin/profile';
 import DataTables from 'views/admin/dataTables';
+import HotelManagement from 'views/admin/hotelManagement';
 import RTL from 'views/admin/rtl';
 
 // Auth Imports
@@ -55,6 +57,13 @@ const routes = [
     path: '/profile',
     icon: <Icon as={MdPerson} width="20px" height="20px" color="inherit" />,
     component: <Profile />,
+  },
+  {
+    name: 'Hotel Management',
+    layout: '/admin',
+    path: '/hotel-management',
+    icon: <Icon as={MdBusiness} width="20px" height="20px" color="inherit" />,
+    component: <HotelManagement />,
   },
   {
     name: 'Sign In',
